@@ -1,98 +1,286 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { router } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { COLORS } from "../../constants";
+import { fetchCurrentUserData } from "../../firebase/api";
+import { logout } from "../../firebase/services/AuthService";
+import { createNewChat } from "../../firebase/services/ChatService";
+import { useAuth, useData } from "../../hooks/useAuth";
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const { currentUser, loading: authLoading } = useAuth();
+  const {
+    currentUserData,
+    setCurrentUserData,
+    allChats,
+    makeChatActive,
+    isChatsLoading,
+  } = useData();
+  const [searchQuery, setSearchQuery] = useState("");
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  // Fetch user data when user is authenticated
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (currentUser && !currentUserData) {
+        try {
+          const userData = await fetchCurrentUserData(currentUser);
+          setCurrentUserData(userData);
+        } catch (error) {
+          console.error("Error loading user data:", error);
+        }
+      }
+    };
+    loadUserData();
+  }, [currentUser, currentUserData, setCurrentUserData]);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !currentUser) {
+      router.replace("/login");
+    }
+  }, [currentUser, authLoading]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      Alert.alert("Error", "Failed to logout");
+    }
+  };
+
+  const handleCreateChat = async () => {
+    if (!currentUserData) return;
+
+    try {
+      const newChat = await createNewChat(currentUserData.uid);
+      makeChatActive(newChat.id);
+      router.push("/chat");
+    } catch (error) {
+      console.error("Error creating chat:", error);
+      Alert.alert("Error", "Failed to create chat");
+    }
+  };
+
+  const handleChatPress = (chatId: string) => {
+    makeChatActive(chatId);
+    router.push("/chat");
+  };
+
+  // Show loading while auth is initializing
+  if (authLoading || !currentUser || !currentUserData) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>
+          {authLoading
+            ? "Checking authentication..."
+            : !currentUser
+            ? "Authenticating..."
+            : "Loading your data..."}
+        </Text>
+      </View>
+    );
+  }
+
+  const filteredChats =
+    allChats?.filter((chat) =>
+      chat.name.toLowerCase().includes(searchQuery.toLowerCase())
+    ) || [];
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerTitle}>Conversations</Text>
+          <Text style={styles.headerSubtitle}>
+            Welcome, {currentUserData.userName}
+          </Text>
+        </View>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Search */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search conversations..."
+          placeholderTextColor={COLORS.dark.textSecondary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
+
+      {/* New Chat Button */}
+      <TouchableOpacity style={styles.newChatButton} onPress={handleCreateChat}>
+        <Text style={styles.newChatButtonText}>+ New Conversation</Text>
+      </TouchableOpacity>
+
+      {/* Chats List */}
+      {isChatsLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Loading chats...</Text>
+        </View>
+      ) : filteredChats.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No conversations yet</Text>
+          <Text style={styles.emptySubtext}>
+            Create your first conversation to get started
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredChats}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.chatItem}
+              onPress={() => handleChatPress(item.id)}
+            >
+              <View style={[styles.chatIcon, { backgroundColor: item.color }]}>
+                <Text style={styles.chatIconText}>💬</Text>
+              </View>
+              <View style={styles.chatInfo}>
+                <Text style={styles.chatName}>{item.name}</Text>
+                <Text style={styles.chatDate}>
+                  {new Date(item.updatedAt).toLocaleDateString()}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.dark.background,
   },
-  stepContainer: {
-    gap: 8,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: COLORS.dark.background,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: COLORS.dark.textSecondary,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.dark.border,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: COLORS.dark.text,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: COLORS.dark.textSecondary,
+    marginTop: 4,
+  },
+  logoutButton: {
+    padding: 8,
+  },
+  logoutText: {
+    color: COLORS.danger,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  searchContainer: {
+    padding: 16,
+  },
+  searchInput: {
+    backgroundColor: COLORS.dark.surface,
+    borderWidth: 1,
+    borderColor: COLORS.dark.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: COLORS.dark.text,
+  },
+  newChatButton: {
+    backgroundColor: COLORS.primary,
+    margin: 16,
+    marginTop: 0,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  newChatButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  chatItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.dark.border,
+  },
+  chatIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  chatIconText: {
+    fontSize: 24,
+  },
+  chatInfo: {
+    flex: 1,
+  },
+  chatName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.dark.text,
+    marginBottom: 4,
+  },
+  chatDate: {
+    fontSize: 14,
+    color: COLORS.dark.textSecondary,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 32,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: COLORS.dark.text,
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  emptySubtext: {
+    fontSize: 14,
+    color: COLORS.dark.textSecondary,
+    textAlign: "center",
   },
 });
