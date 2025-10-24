@@ -53,7 +53,7 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (!activeChatId) {
-      router.replace("/(tabs)");
+      router.replace("/");
     }
   }, [activeChatId]);
 

@@ -10,12 +10,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { COLORS } from "../../constants";
-import { fetchCurrentUserData } from "../../firebase/api";
-import { logout } from "../../firebase/services/AuthService";
-import { createNewChat } from "../../firebase/services/ChatService";
-import { useAuth, useData } from "../../hooks/useAuth";
-import { MOCK_BRANCHES, MOCK_CHAT } from "../../utils/mockData";
+import { COLORS } from "../constants";
+import { fetchCurrentUserData } from "../firebase/api";
+import { logout } from "../firebase/services/AuthService";
+import { createNewChat } from "../firebase/services/ChatService";
+import { useAuth, useData } from "../hooks/useAuth";
+import { MOCK_BRANCHES, MOCK_CHAT } from "../utils/mockData";
 
 export default function HomeScreen() {
   const { currentUser, loading: authLoading } = useAuth();

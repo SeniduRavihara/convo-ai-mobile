@@ -31,7 +31,7 @@ export default function LoginScreen() {
     try {
       await login({ email, password });
       // Navigation will be handled by AuthContext
-      router.replace("/(tabs)");
+      router.replace("/");
     } catch (error: any) {
       console.error("Login error:", error);
       Alert.alert("Login Failed", error.message || "An error occurred");
