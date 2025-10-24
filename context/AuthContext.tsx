@@ -21,6 +21,20 @@ const AuthContextProvider: React.FC<AuthContextProviderProps> = ({
   useEffect(() => {
     let isMounted = true;
 
+    // Check for persisted user on mount
+    const checkPersistedAuth = async () => {
+      try {
+        const storedUser = await AsyncStorage.getItem("user");
+        if (storedUser && isMounted) {
+          console.log("Found persisted user data");
+        }
+      } catch (error) {
+        console.error("Error checking persisted auth:", error);
+      }
+    };
+
+    checkPersistedAuth();
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!isMounted) return;
 
@@ -35,7 +49,7 @@ const AuthContextProvider: React.FC<AuthContextProviderProps> = ({
           const accessToken = await user.getIdToken();
           await AsyncStorage.setItem("token", accessToken);
           await AsyncStorage.setItem("user", JSON.stringify(user));
-          console.log("Auth state changed: LoggedIn");
+          console.log("Auth state changed: LoggedIn", user.email);
         }
       } catch (error) {
         console.error("Error during auth state change:", error);

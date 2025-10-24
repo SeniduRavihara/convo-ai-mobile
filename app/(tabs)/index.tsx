@@ -15,6 +15,7 @@ import { fetchCurrentUserData } from "../../firebase/api";
 import { logout } from "../../firebase/services/AuthService";
 import { createNewChat } from "../../firebase/services/ChatService";
 import { useAuth, useData } from "../../hooks/useAuth";
+import { MOCK_BRANCHES, MOCK_CHAT } from "../../utils/mockData";
 
 export default function HomeScreen() {
   const { currentUser, loading: authLoading } = useAuth();
@@ -24,8 +25,10 @@ export default function HomeScreen() {
     allChats,
     makeChatActive,
     isChatsLoading,
+    setBranchesData,
   } = useData();
   const [searchQuery, setSearchQuery] = useState("");
+  const [useMockData, setUseMockData] = useState(false);
 
   // Fetch user data when user is authenticated
   useEffect(() => {
@@ -77,6 +80,17 @@ export default function HomeScreen() {
     router.push("/chat");
   };
 
+  const handleLoadMockData = () => {
+    setUseMockData(true);
+    setBranchesData(MOCK_BRANCHES);
+    makeChatActive(MOCK_CHAT.id);
+    Alert.alert(
+      "Mock Data Loaded!",
+      "Open the mock chat to test branch switching",
+      [{ text: "OK", onPress: () => router.push("/chat") }]
+    );
+  };
+
   // Show loading while auth is initializing
   if (authLoading || !currentUser || !currentUserData) {
     return (
@@ -97,6 +111,11 @@ export default function HomeScreen() {
     allChats?.filter((chat) =>
       chat.name.toLowerCase().includes(searchQuery.toLowerCase())
     ) || [];
+
+  // Add mock chat if mock data is enabled
+  const displayChats = useMockData
+    ? [MOCK_CHAT, ...filteredChats]
+    : filteredChats;
 
   return (
     <View style={styles.container}>
@@ -129,13 +148,23 @@ export default function HomeScreen() {
         <Text style={styles.newChatButtonText}>+ New Conversation</Text>
       </TouchableOpacity>
 
+      {/* Mock Data Button */}
+      <TouchableOpacity
+        style={[styles.newChatButton, styles.mockButton]}
+        onPress={handleLoadMockData}
+      >
+        <Text style={styles.newChatButtonText}>
+          🌿 Load Mock Data (Test Branches)
+        </Text>
+      </TouchableOpacity>
+
       {/* Chats List */}
       {isChatsLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={styles.loadingText}>Loading chats...</Text>
         </View>
-      ) : filteredChats.length === 0 ? (
+      ) : displayChats.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>No conversations yet</Text>
           <Text style={styles.emptySubtext}>
@@ -144,7 +173,7 @@ export default function HomeScreen() {
         </View>
       ) : (
         <FlatList
-          data={filteredChats}
+          data={displayChats}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <TouchableOpacity
@@ -152,7 +181,9 @@ export default function HomeScreen() {
               onPress={() => handleChatPress(item.id)}
             >
               <View style={[styles.chatIcon, { backgroundColor: item.color }]}>
-                <Text style={styles.chatIconText}>💬</Text>
+                <Text style={styles.chatIconText}>
+                  {item.id === "mock-chat-001" ? "🌿" : "💬"}
+                </Text>
               </View>
               <View style={styles.chatInfo}>
                 <Text style={styles.chatName}>{item.name}</Text>
@@ -229,6 +260,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     alignItems: "center",
+  },
+  mockButton: {
+    backgroundColor: COLORS.success,
   },
   newChatButtonText: {
     color: "#FFFFFF",

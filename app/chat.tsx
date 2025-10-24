@@ -6,6 +6,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   StyleSheet,
   Text,
@@ -13,32 +14,43 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import BranchPicker from "../components/BranchPicker";
 import { COLORS } from "../constants";
 import { addMessageToBranch } from "../firebase/services/ChatService";
 import { useData } from "../hooks/useAuth";
+import { getBranchMessages } from "../services/branchTreeService";
 import {
   createAssistantMessage,
   createUserMessage,
 } from "../services/messageService";
+import { MOCK_CHAT } from "../utils/mockData";
 
 export default function ChatScreen() {
   const { currentUserData, branchesData, activeChatId, allChats } = useData();
   const [message, setMessage] = useState("");
   const [activeBranchId, setActiveBranchId] = useState("main");
   const [isSending, setIsSending] = useState(false);
+  const [showBranchPicker, setShowBranchPicker] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
-  const currentChat = allChats?.find((chat) => chat.id === activeChatId);
-  const activeBranch = branchesData[activeBranchId];
-  const messages = activeBranch?.messages || [];
+  // Check if this is the mock chat
+  const isMockChat = activeChatId === "mock-chat-001";
+  const currentChat = isMockChat
+    ? MOCK_CHAT
+    : allChats?.find((chat) => chat.id === activeChatId);
 
-  // Function to switch branches (for future implementation)
+  // Use getBranchMessages to get all messages including inherited ones
+  const messages = getBranchMessages(activeBranchId, branchesData);
+
+  // Get all branches as an array for the branch picker
+  const allBranches = Object.values(branchesData);
+  const hasBranches = allBranches.length > 1;
+
+  // Function to switch branches
   const switchBranch = (branchId: string) => {
     setActiveBranchId(branchId);
+    setShowBranchPicker(false);
   };
-
-  // Prevent unused variable warning
-  void switchBranch;
 
   useEffect(() => {
     if (!activeChatId) {
@@ -47,8 +59,18 @@ export default function ChatScreen() {
   }, [activeChatId]);
 
   const handleSendMessage = async () => {
-    if (!message.trim() || !currentUserData || !activeChatId || !activeBranchId)
+    if (!message.trim() || !activeChatId || !activeBranchId) return;
+
+    // Don't allow sending messages in mock chat
+    if (isMockChat) {
+      Alert.alert(
+        "Mock Data",
+        "This is a demo chat. Create a real chat to send messages!"
+      );
       return;
+    }
+
+    if (!currentUserData) return;
 
     const userMessage = createUserMessage(message, activeBranchId);
     setMessage("");
@@ -128,7 +150,27 @@ export default function ChatScreen() {
     );
   };
 
-  if (!activeChatId || !currentChat) {
+  if (!activeChatId) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading chat...</Text>
+      </View>
+    );
+  }
+
+  // For mock chat, check if branches are loaded
+  if (isMockChat && Object.keys(branchesData).length === 0) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading mock data...</Text>
+      </View>
+    );
+  }
+
+  // For real chats, check if chat exists
+  if (!isMockChat && !currentChat) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -143,6 +185,15 @@ export default function ChatScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={100}
     >
+      {/* Mock Data Banner */}
+      {isMockChat && (
+        <View style={styles.mockBanner}>
+          <Text style={styles.mockBannerText}>
+            🌿 DEMO MODE - Test Branch Switching
+          </Text>
+        </View>
+      )}
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -152,10 +203,41 @@ export default function ChatScreen() {
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {currentChat.name}
+          {currentChat?.name || "Chat"}
         </Text>
-        <View style={styles.headerRight} />
+        <TouchableOpacity
+          style={styles.branchButton}
+          onPress={() => setShowBranchPicker(true)}
+        >
+          <Text style={styles.branchButtonText}>
+            🌿 {hasBranches ? `${allBranches.length} Branches` : "Main"}
+          </Text>
+        </TouchableOpacity>
       </View>
+
+      {/* Branch Picker Modal */}
+      <Modal
+        visible={showBranchPicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowBranchPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Branch</Text>
+              <TouchableOpacity onPress={() => setShowBranchPicker(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <BranchPicker
+              branches={allBranches}
+              activeBranchId={activeBranchId}
+              onBranchSelect={switchBranch}
+            />
+          </View>
+        </View>
+      </Modal>
 
       {/* Messages */}
       <FlatList
@@ -179,13 +261,15 @@ export default function ChatScreen() {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Type a message..."
+          placeholder={
+            isMockChat ? "Demo mode - read only" : "Type a message..."
+          }
           placeholderTextColor={COLORS.dark.textSecondary}
           value={message}
           onChangeText={setMessage}
           multiline
           maxLength={2000}
-          editable={!isSending}
+          editable={!isSending && !isMockChat}
         />
         <TouchableOpacity
           style={[
@@ -210,6 +294,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.dark.background,
+  },
+  mockBanner: {
+    backgroundColor: COLORS.success,
+    padding: 12,
+    alignItems: "center",
+  },
+  mockBannerText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 14,
   },
   loadingContainer: {
     flex: 1,
@@ -247,7 +341,47 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   headerRight: {
-    width: 60,
+    width: 24,
+  },
+  branchButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: COLORS.primary + "20",
+    borderRadius: 8,
+  },
+  branchButtonText: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: COLORS.dark.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: "70%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.dark.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.dark.text,
+  },
+  modalClose: {
+    fontSize: 24,
+    color: COLORS.dark.textSecondary,
+    fontWeight: "300",
   },
   messagesList: {
     padding: 16,
