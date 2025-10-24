@@ -16,14 +16,34 @@ import {
 } from "react-native";
 import BranchBottomSheet from "../components/BranchBottomSheet";
 import { COLORS } from "../constants";
-import { addMessageToBranch } from "../firebase/services/ChatService";
+import {
+  addMessageToBranch,
+  updateBranchName,
+  updateChatName,
+} from "../firebase/services/ChatService";
 import { useData } from "../hooks/useAuth";
-import { getBranchMessages } from "../services/branchTreeService";
+import {
+  generateBranchName as generateBranchNameAI,
+  generateConversationName as generateChatName,
+  getUserApiKey,
+  parseStreamingResponse,
+  sendMessageStreaming,
+} from "../services/aiService";
+import {
+  getBranchMessages,
+  getChildBranchesFromMessage,
+  isMessageForkPoint,
+  isMessageFromBranch,
+} from "../services/branchTreeService";
 import {
   createAssistantMessage,
   createUserMessage,
 } from "../services/messageService";
 import { MOCK_CHAT } from "../utils/mockData";
+
+// API Configuration - Update this with your backend URL
+const API_BASE_URL = "https://your-api-url.com"; // TODO: Update with actual API URL
+const CHAT_API_ENDPOINT = `${API_BASE_URL}/api/chat`;
 
 export default function ChatScreen() {
   const { currentUserData, branchesData, activeChatId, allChats } = useData();
@@ -31,6 +51,8 @@ export default function ChatScreen() {
   const [activeBranchId, setActiveBranchId] = useState("main");
   const [isSending, setIsSending] = useState(false);
   const [showBranchPicker, setShowBranchPicker] = useState(false);
+  const [streamingContent, setStreamingContent] = useState("");
+  const [lastMessageCount, setLastMessageCount] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
   // Check if this is the mock chat
@@ -50,6 +72,10 @@ export default function ChatScreen() {
   const switchBranch = (branchId: string) => {
     setActiveBranchId(branchId);
     setShowBranchPicker(false);
+    // Scroll to bottom when switching branches
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   useEffect(() => {
@@ -57,6 +83,74 @@ export default function ChatScreen() {
       router.replace("/");
     }
   }, [activeChatId]);
+
+  // Auto-naming effect: Watch for message count changes
+  useEffect(() => {
+    const currentBranch = branchesData[activeBranchId];
+    const currentMessageCount = currentBranch?.messages?.length || 0;
+
+    // If message count just reached 2 (first user + assistant exchange)
+    if (
+      currentMessageCount === 2 &&
+      lastMessageCount !== 2 &&
+      activeChatId &&
+      !isMockChat
+    ) {
+      const messages = currentBranch?.messages || [];
+      if (messages.length >= 2) {
+        const userMsg = messages.find((m) => m.role === "user");
+        const aiMsg = messages.find((m) => m.role === "assistant");
+
+        if (userMsg && aiMsg && currentUserData) {
+          // Auto-name chat or branch
+          if (activeBranchId !== "main") {
+            // This is a follow-up branch - rename it
+            generateBranchNameAI(
+              userMsg.content,
+              aiMsg.content,
+              CHAT_API_ENDPOINT
+            )
+              .then((branchName) => {
+                updateBranchName(
+                  currentUserData.uid,
+                  activeChatId,
+                  activeBranchId,
+                  branchName
+                );
+              })
+              .catch((error) => {
+                console.error("Error generating branch name:", error);
+              });
+          } else {
+            // Main branch - rename the chat
+            const currentChatData = allChats?.find(
+              (chat) => chat.id === activeChatId
+            );
+            if (!currentChatData?.autoRenamed) {
+              // Use the user message for naming
+              generateChatName(userMsg.content, CHAT_API_ENDPOINT)
+                .then((chatName) => {
+                  updateChatName(currentUserData.uid, activeChatId, chatName);
+                })
+                .catch((error) => {
+                  console.error("Error generating chat name:", error);
+                });
+            }
+          }
+        }
+      }
+    }
+
+    setLastMessageCount(currentMessageCount);
+  }, [
+    branchesData,
+    activeBranchId,
+    activeChatId,
+    lastMessageCount,
+    allChats,
+    currentUserData,
+    isMockChat,
+  ]);
 
   const handleSendMessage = async () => {
     if (!message.trim() || !activeChatId || !activeBranchId) return;
@@ -73,6 +167,7 @@ export default function ChatScreen() {
     if (!currentUserData) return;
 
     const userMessage = createUserMessage(message, activeBranchId);
+    const userMessageText = message;
     setMessage("");
     setIsSending(true);
 
@@ -85,24 +180,77 @@ export default function ChatScreen() {
         userMessage
       );
 
-      // Scroll to bottom
+      // Scroll to bottom after user message
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
 
-      // For now, we'll add a simple mock assistant response
-      // In a real app, you would call your API here
-      const assistantMessage = createAssistantMessage(
-        "I'm a mobile app now! The AI integration will be completed when you set up your API endpoint.",
-        activeBranchId
+      // Create assistant message placeholder
+      const assistantMessage = createAssistantMessage("", activeBranchId);
+
+      // Get conversation history for API
+      const conversationHistory = getBranchMessages(
+        activeBranchId,
+        branchesData
       );
 
-      await addMessageToBranch(
-        currentUserData.uid,
-        activeChatId,
-        activeBranchId,
-        assistantMessage
-      );
+      // Get user's API key
+      const userApiKey = await getUserApiKey();
+
+      try {
+        // Call streaming API
+        const response = await sendMessageStreaming(
+          userMessageText,
+          conversationHistory,
+          CHAT_API_ENDPOINT,
+          userApiKey || undefined
+        );
+
+        // Parse streaming response
+        await parseStreamingResponse(
+          response,
+          (delta, content) => {
+            // Update streaming content for UI
+            setStreamingContent(content);
+          },
+          async (finalContent) => {
+            // Streaming complete
+            setStreamingContent("");
+            assistantMessage.content = finalContent;
+
+            // Save assistant message to Firestore
+            await addMessageToBranch(
+              currentUserData.uid,
+              activeChatId,
+              activeBranchId,
+              assistantMessage
+            );
+
+            // Scroll to bottom after complete message
+            setTimeout(() => {
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+          }
+        );
+      } catch (error) {
+        console.error("Error calling AI API:", error);
+
+        // Fallback: Add a mock response
+        assistantMessage.content =
+          "I'm currently in development mode. Please configure your API endpoint in the app settings to enable AI responses.";
+
+        await addMessageToBranch(
+          currentUserData.uid,
+          activeChatId,
+          activeBranchId,
+          assistantMessage
+        );
+
+        Alert.alert(
+          "API Not Configured",
+          "Please update the API_BASE_URL in chat.tsx with your backend URL to enable AI responses."
+        );
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       Alert.alert("Error", "Failed to send message");
@@ -111,40 +259,97 @@ export default function ChatScreen() {
     }
   };
 
-  const renderMessage = ({ item }: { item: any }) => {
+  const renderMessage = ({ item, index }: { item: any; index: number }) => {
     const isUser = item.role === "user";
+    const isForkPoint = isMessageForkPoint(item.id, branchesData);
+    const isFromActiveBranch = isMessageFromBranch(
+      item.id,
+      activeBranchId,
+      branchesData
+    );
+    const childBranches = isForkPoint
+      ? getChildBranchesFromMessage(item.id, branchesData)
+      : [];
+
+    // Check if this is the first message from the current branch (transition point)
+    const isTransitionPoint =
+      index > 0 &&
+      isFromActiveBranch &&
+      !isMessageFromBranch(
+        messages[index - 1].id,
+        activeBranchId,
+        branchesData
+      );
+
     return (
-      <View
-        style={[
-          styles.messageContainer,
-          isUser ? styles.userMessage : styles.assistantMessage,
-        ]}
-      >
+      <View>
+        {/* Branch Transition Indicator */}
+        {isTransitionPoint && (
+          <View style={styles.transitionIndicator}>
+            <View style={styles.transitionLine} />
+            <View style={styles.transitionBadge}>
+              <MaterialCommunityIcons
+                name="source-branch"
+                size={12}
+                color={COLORS.primary}
+              />
+              <Text style={styles.transitionText}>
+                Branch: {branchesData[activeBranchId]?.name}
+              </Text>
+            </View>
+            <View style={styles.transitionLine} />
+          </View>
+        )}
+
+        {/* Message Bubble */}
         <View
           style={[
-            styles.messageBubble,
-            isUser ? styles.userBubble : styles.assistantBubble,
+            styles.messageContainer,
+            isUser ? styles.userMessage : styles.assistantMessage,
           ]}
         >
-          <Text
+          <View
             style={[
-              styles.messageText,
-              isUser ? styles.userText : styles.assistantText,
+              styles.messageBubble,
+              isUser ? styles.userBubble : styles.assistantBubble,
+              isForkPoint && styles.forkPointBubble,
             ]}
           >
-            {item.content}
-          </Text>
-          <Text
-            style={[
-              styles.messageTime,
-              isUser ? styles.userTime : styles.assistantTime,
-            ]}
-          >
-            {new Date(item.timestamp).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </Text>
+            {/* Fork Point Indicator */}
+            {isForkPoint && (
+              <View style={styles.forkPointIndicator}>
+                <MaterialCommunityIcons
+                  name="source-branch"
+                  size={14}
+                  color={COLORS.primary}
+                />
+                <Text style={styles.forkPointText}>
+                  {childBranches.length} branch
+                  {childBranches.length > 1 ? "es" : ""}
+                </Text>
+              </View>
+            )}
+
+            <Text
+              style={[
+                styles.messageText,
+                isUser ? styles.userText : styles.assistantText,
+              ]}
+            >
+              {item.content}
+            </Text>
+            <Text
+              style={[
+                styles.messageTime,
+                isUser ? styles.userTime : styles.assistantTime,
+              ]}
+            >
+              {new Date(item.timestamp).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+          </View>
         </View>
       </View>
     );
@@ -253,6 +458,21 @@ export default function ChatScreen() {
           </View>
         )}
       />
+
+      {/* Streaming Indicator */}
+      {streamingContent && (
+        <View style={[styles.messageContainer, styles.assistantMessage]}>
+          <View style={[styles.messageBubble, styles.assistantBubble]}>
+            <View style={styles.streamingHeader}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.streamingLabel}>AI is typing...</Text>
+            </View>
+            <Text style={[styles.messageText, styles.assistantText]}>
+              {streamingContent}
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* Floating Action Button for Branches */}
       {hasBranches && !showBranchPicker && (
@@ -503,5 +723,67 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "700",
+  },
+  // Branch Transition Indicator Styles
+  transitionIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 16,
+    paddingHorizontal: 16,
+  },
+  transitionLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.primary,
+    opacity: 0.3,
+  },
+  transitionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.dark.surface,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginHorizontal: 8,
+    gap: 6,
+  },
+  transitionText: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  // Fork Point Indicator Styles
+  forkPointBubble: {
+    borderColor: COLORS.primary,
+    borderWidth: 1.5,
+  },
+  forkPointIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.primary + "15",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 8,
+    gap: 4,
+  },
+  forkPointText: {
+    color: COLORS.primary,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  // Streaming Indicator Styles
+  streamingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 8,
+  },
+  streamingLabel: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: "600",
   },
 });

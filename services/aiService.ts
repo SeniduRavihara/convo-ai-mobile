@@ -175,3 +175,146 @@ export async function saveUserApiKey(apiKey: string): Promise<void> {
     console.error("Error saving user API key:", error);
   }
 }
+
+/**
+ * Generate a branch name using AI based on conversation content
+ */
+export async function generateBranchName(
+  userMessage: string,
+  aiResponse: string,
+  apiEndpoint: string
+): Promise<string> {
+  try {
+    const namingPrompt = `User: ${userMessage.substring(0, 150)}${
+      userMessage.length > 150 ? "..." : ""
+    }\n\nAssistant: ${aiResponse.substring(0, 150)}${
+      aiResponse.length > 150 ? "..." : ""
+    }\n\nBased on this conversation, suggest a short, descriptive name (under 5 words):`;
+
+    const response = await fetch(apiEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        question: namingPrompt,
+        history: [],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to generate branch name");
+    }
+
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    let fullContent = "";
+
+    if (!reader) return "Branch Discussion";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk
+        .split("\n")
+        .filter((line) => line.startsWith("data: "));
+
+      for (const line of lines) {
+        const dataStr = line.replace("data: ", "").trim();
+        if (dataStr === "[DONE]") break;
+
+        try {
+          const data = JSON.parse(dataStr);
+          if (data.delta) {
+            fullContent += data.delta;
+          }
+        } catch (e) {
+          console.error("Parse error:", e);
+        }
+      }
+    }
+
+    // Clean up the suggested name
+    const cleanName = fullContent
+      .trim()
+      .replace(/^["']|["']$/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    return cleanName || "Branch Discussion";
+  } catch (error) {
+    console.error("Error generating branch name:", error);
+    return "Branch Discussion";
+  }
+}
+
+/**
+ * Generate a branch name from selected text
+ */
+export async function generateBranchNameFromSelection(
+  selectedText: string,
+  apiEndpoint: string
+): Promise<string> {
+  try {
+    const namingPrompt = `Suggest a short, descriptive name for a conversation about: "${selectedText}". Keep it under 5 words.`;
+
+    const response = await fetch(apiEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        question: namingPrompt,
+        history: [],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to generate branch name");
+    }
+
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    let fullContent = "";
+
+    if (!reader) return "Discussion";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk
+        .split("\n")
+        .filter((line) => line.startsWith("data: "));
+
+      for (const line of lines) {
+        const dataStr = line.replace("data: ", "").trim();
+        if (dataStr === "[DONE]") break;
+
+        try {
+          const data = JSON.parse(dataStr);
+          if (data.delta) {
+            fullContent += data.delta;
+          }
+        } catch (e) {
+          console.error("Parse error:", e);
+        }
+      }
+    }
+
+    // Clean up the suggested name
+    const cleanName = fullContent
+      .trim()
+      .replace(/^["']|["']$/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    return cleanName || "Discussion";
+  } catch (error) {
+    console.error("Error generating branch name from selection:", error);
+    return "Discussion";
+  }
+}

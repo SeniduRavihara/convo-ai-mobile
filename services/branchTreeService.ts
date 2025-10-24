@@ -197,3 +197,32 @@ export function hasChildBranches(
 ): boolean {
   return getChildBranches(branchId, branchesData).length > 0;
 }
+
+/**
+ * Get all child branches that fork from a specific message
+ *
+ * @param messageId - The parent message ID
+ * @param branchesData - All branches data
+ * @returns Array of branches that fork from this message
+ */
+export function getChildBranchesFromMessage(
+  messageId: string,
+  branchesData: Record<string, BranchWithMessages>
+): BranchWithMessages[] {
+  const branches = Object.values(branchesData);
+  return branches.filter((branch) => branch.parentMessageId === messageId);
+}
+
+/**
+ * Check if a message is a fork point (has child branches)
+ *
+ * @param messageId - The message ID to check
+ * @param branchesData - All branches data
+ * @returns True if this message has child branches
+ */
+export function isMessageForkPoint(
+  messageId: string,
+  branchesData: Record<string, BranchWithMessages>
+): boolean {
+  return getChildBranchesFromMessage(messageId, branchesData).length > 0;
+}
