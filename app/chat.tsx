@@ -347,7 +347,11 @@ export default function ChatScreen() {
                 </Text>
               </View>
             )}
-            <Markdown style={markdownStyles} rules={markdownRules} mergeStyle={true}>
+            <Markdown
+              style={markdownStyles}
+              rules={markdownRules}
+              mergeStyle={true}
+            >
               {item.content}
             </Markdown>
             <Text style={styles.assistantTime}>
@@ -473,7 +477,11 @@ export default function ChatScreen() {
             <ActivityIndicator size="small" color={COLORS.primary} />
             <Text style={styles.streamingLabel}>AI is typing...</Text>
           </View>
-          <Markdown style={markdownStyles} rules={markdownRules} mergeStyle={true}>
+          <Markdown
+            style={markdownStyles}
+            rules={markdownRules}
+            mergeStyle={true}
+          >
             {streamingContent}
           </Markdown>
         </View>
@@ -823,10 +831,25 @@ const markdownRules = {
       key={node.key}
       horizontal={true}
       showsHorizontalScrollIndicator={true}
-      style={styles.fence}
+      style={{
+        backgroundColor: "#1E1E1E",
+        borderRadius: 8,
+        marginVertical: 8,
+        borderLeftWidth: 3,
+        borderLeftColor: COLORS.primary,
+      }}
       persistentScrollbar={true}
     >
-      <Text style={styles.fence}>{node.content}</Text>
+      <Text
+        style={{
+          padding: 12,
+          fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+          fontSize: 13,
+          color: "#D4D4D4",
+        }}
+      >
+        {node.content}
+      </Text>
     </ScrollView>
   ),
   code_block: (node: any, children: any, parent: any, styles: any) => (
@@ -834,10 +857,23 @@ const markdownRules = {
       key={node.key}
       horizontal={true}
       showsHorizontalScrollIndicator={true}
-      style={styles.code_block}
+      style={{
+        backgroundColor: "#1E1E1E",
+        borderRadius: 8,
+        marginVertical: 8,
+      }}
       persistentScrollbar={true}
     >
-      <Text style={styles.code_block}>{node.content}</Text>
+      <Text
+        style={{
+          padding: 12,
+          fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+          fontSize: 13,
+          color: "#D4D4D4",
+        }}
+      >
+        {node.content}
+      </Text>
     </ScrollView>
   ),
 };
@@ -890,35 +926,6 @@ const markdownStyles = StyleSheet.create({
     borderRadius: 4,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 14,
-  },
-  code_block: {
-    backgroundColor: "#1E1E1E",
-    padding: 12,
-    borderRadius: 8,
-    marginVertical: 8,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 13,
-    color: "#D4D4D4",
-    overflow: "scroll", // Enable horizontal scrolling
-  },
-  fence: {
-    backgroundColor: "#1E1E1E",
-    padding: 12,
-    borderRadius: 8,
-    marginVertical: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.primary,
-    overflow: "scroll", // Enable horizontal scrolling
-  },
-  // Styles for text inside code blocks - prevent wrapping
-  code_inline_text: {
-    flexWrap: "nowrap",
-  },
-  fence_text: {
-    flexWrap: "nowrap",
-  },
-  code_block_text: {
-    flexWrap: "nowrap",
   },
   bullet_list: {
     marginTop: 4,
