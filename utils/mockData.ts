@@ -27,7 +27,7 @@ export const MOCK_BRANCHES: Record<string, BranchWithMessages> = {
         id: "msg-2",
         role: "assistant",
         content:
-          "Of course! React Native is a framework for building mobile apps using React. It allows you to write code once and deploy to both iOS and Android. What specific aspect would you like to know more about?",
+          "Of course! **React Native** is a framework for building mobile apps using React. It allows you to write code once and deploy to both iOS and Android.\n\nHere are the key benefits:\n\n1. **Cross-platform** - Write once, run everywhere\n2. **Native Performance** - Uses actual native components\n3. **Hot Reload** - See changes instantly\n4. **Large Community** - Tons of libraries and support\n\nWhat specific aspect would you like to know more about?",
         timestamp: new Date(Date.now() - 60000 * 9).toISOString(),
       },
       {
@@ -40,7 +40,7 @@ export const MOCK_BRANCHES: Record<string, BranchWithMessages> = {
         id: "msg-4",
         role: "assistant",
         content:
-          "Great question! React Native supports several state management solutions:\n\n1. **useState** - For local component state\n2. **Context API** - For sharing state across components\n3. **Redux** - For complex global state\n4. **Zustand** - Lightweight alternative\n5. **MobX** - Observable-based state\n\nWhich one interests you most?",
+          'Great question! React Native supports several state management solutions:\n\n### Popular Options:\n\n1. **useState Hook** - For local component state\n   - Simple and built-in\n   - Perfect for isolated state\n\n2. **Context API** - For sharing state across components\n   - No extra dependencies\n   - Good for medium apps\n\n3. **Redux** - For complex global state\n   - Predictable state updates\n   - Great DevTools\n\n4. **Zustand** - Lightweight alternative\n   - Minimal boilerplate\n   - Easy to learn\n\n5. **MobX** - Observable-based state\n   - Reactive by default\n   - Less boilerplate\n\nHere\'s a quick **useState** example:\n\n```javascript\nconst [count, setCount] = useState(0);\n\nreturn (\n  <View>\n    <Text>Count: {count}</Text>\n    <Button \n      title="Increment" \n      onPress={() => setCount(count + 1)} \n    />\n  </View>\n);\n```\n\nWhich one interests you most?',
         timestamp: new Date(Date.now() - 60000 * 7).toISOString(),
       },
     ],
@@ -62,7 +62,7 @@ export const MOCK_BRANCHES: Record<string, BranchWithMessages> = {
         id: "msg-6a",
         role: "assistant",
         content:
-          "Redux is a predictable state container! Here are the key concepts:\n\n• **Store** - Single source of truth\n• **Actions** - Events that describe what happened\n• **Reducers** - Pure functions that update state\n• **Dispatch** - Method to send actions\n\nWith Redux Toolkit, setup is much simpler. Would you like to see an example?",
+          "Redux is a predictable state container! Here are the key concepts:\n\n### Core Principles:\n\n- **Store** - Single source of truth for your app state\n- **Actions** - Plain objects describing what happened\n- **Reducers** - Pure functions that calculate new state\n- **Dispatch** - Method to send actions to the store\n\n### Flow:\n\n```\nUI → Action → Reducer → New State → UI Updates\n```\n\nWith **Redux Toolkit**, setup is much simpler:\n\n```typescript\nimport { configureStore } from '@reduxjs/toolkit';\nimport userReducer from './userSlice';\n\nconst store = configureStore({\n  reducer: {\n    user: userReducer,\n  },\n});\n```\n\nWould you like to see a complete slice example?",
         timestamp: new Date(Date.now() - 60000 * 5).toISOString(),
       },
       {
@@ -75,7 +75,7 @@ export const MOCK_BRANCHES: Record<string, BranchWithMessages> = {
         id: "msg-8a",
         role: "assistant",
         content:
-          '```typescript\nimport { createSlice } from "@reduxjs/toolkit";\n\nconst userSlice = createSlice({\n  name: "user",\n  initialState: { name: "", loggedIn: false },\n  reducers: {\n    login: (state, action) => {\n      state.name = action.payload;\n      state.loggedIn = true;\n    },\n    logout: (state) => {\n      state.loggedIn = false;\n    },\n  },\n});\n\nexport const { login, logout } = userSlice.actions;\n```',
+          "Here's a complete Redux Toolkit slice example:\n\n```typescript\nimport { createSlice, PayloadAction } from '@reduxjs/toolkit';\n\ninterface UserState {\n  name: string;\n  email: string;\n  loggedIn: boolean;\n}\n\nconst initialState: UserState = {\n  name: '',\n  email: '',\n  loggedIn: false,\n};\n\nconst userSlice = createSlice({\n  name: 'user',\n  initialState,\n  reducers: {\n    login: (state, action: PayloadAction<{ name: string; email: string }>) => {\n      state.name = action.payload.name;\n      state.email = action.payload.email;\n      state.loggedIn = true;\n    },\n    logout: (state) => {\n      state.name = '';\n      state.email = '';\n      state.loggedIn = false;\n    },\n    updateProfile: (state, action: PayloadAction<{ name: string }>) => {\n      state.name = action.payload.name;\n    },\n  },\n});\n\nexport const { login, logout, updateProfile } = userSlice.actions;\nexport default userSlice.reducer;\n```\n\nAnd here's how to use it in a component:\n\n```typescript\nimport { useSelector, useDispatch } from 'react-redux';\nimport { login, logout } from './userSlice';\n\nfunction UserProfile() {\n  const user = useSelector((state) => state.user);\n  const dispatch = useDispatch();\n\n  const handleLogin = () => {\n    dispatch(login({ \n      name: 'John Doe', \n      email: 'john@example.com' \n    }));\n  };\n\n  return (\n    <View>\n      {user.loggedIn ? (\n        <>\n          <Text>Welcome, {user.name}!</Text>\n          <Button title=\"Logout\" onPress={() => dispatch(logout())} />\n        </>\n      ) : (\n        <Button title=\"Login\" onPress={handleLogin} />\n      )}\n    </View>\n  );\n}\n```\n\nNotice how Redux Toolkit eliminates boilerplate with:\n- ✅ Built-in Immer for immutable updates\n- ✅ Automatic action creators\n- ✅ TypeScript support out of the box\n- ✅ DevTools enabled by default",
         timestamp: new Date(Date.now() - 60000 * 3).toISOString(),
       },
     ],

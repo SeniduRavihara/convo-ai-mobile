@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Markdown from "react-native-markdown-display";
 import BranchBottomSheet from "../components/BranchBottomSheet";
 import { COLORS } from "../constants";
 import {
@@ -301,56 +302,72 @@ export default function ChatScreen() {
           </View>
         )}
 
-        {/* Message Bubble */}
-        <View
-          style={[
-            styles.messageContainer,
-            isUser ? styles.userMessage : styles.assistantMessage,
-          ]}
-        >
-          <View
-            style={[
-              styles.messageBubble,
-              isUser ? styles.userBubble : styles.assistantBubble,
-              isForkPoint && styles.forkPointBubble,
-            ]}
-          >
-            {/* Fork Point Indicator */}
-            {isForkPoint && (
-              <View style={styles.forkPointIndicator}>
-                <MaterialCommunityIcons
-                  name="source-branch"
-                  size={14}
-                  color={COLORS.primary}
-                />
-                <Text style={styles.forkPointText}>
-                  {childBranches.length} branch
-                  {childBranches.length > 1 ? "es" : ""}
-                </Text>
-              </View>
-            )}
-
-            <Text
-              style={[
-                styles.messageText,
-                isUser ? styles.userText : styles.assistantText,
-              ]}
+        {/* User Message - Card Style */}
+        {isUser ? (
+          <View style={styles.userMessageContainer}>
+            <View
+              style={[styles.userBubble, isForkPoint && styles.forkPointBubble]}
             >
-              {item.content}
-            </Text>
-            <Text
-              style={[
-                styles.messageTime,
-                isUser ? styles.userTime : styles.assistantTime,
-              ]}
-            >
-              {new Date(item.timestamp).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </Text>
+              {isForkPoint && (
+                <View style={styles.forkPointIndicator}>
+                  <MaterialCommunityIcons
+                    name="source-branch"
+                    size={14}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.forkPointText}>
+                    {childBranches.length} branch
+                    {childBranches.length > 1 ? "es" : ""}
+                  </Text>
+                </View>
+              )}
+              <Text style={styles.userText}>{item.content}</Text>
+              <Text style={styles.userTime}>
+                {new Date(item.timestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Text>
+            </View>
           </View>
-        </View>
+        ) : (
+          /* Assistant Message - Free Style with Markdown */
+          <View style={styles.assistantMessageContainer}>
+            <View style={styles.assistantHeader}>
+              <View style={styles.assistantIcon}>
+                <MaterialCommunityIcons
+                  name="robot"
+                  size={16}
+                  color="#FFFFFF"
+                />
+              </View>
+            </View>
+            <View style={styles.assistantContent}>
+              {isForkPoint && (
+                <View style={styles.assistantForkIndicator}>
+                  <MaterialCommunityIcons
+                    name="source-branch"
+                    size={14}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.assistantForkText}>
+                    {childBranches.length} branch
+                    {childBranches.length > 1 ? "es" : ""}
+                  </Text>
+                </View>
+              )}
+              <Markdown style={markdownStyles} mergeStyle={true}>
+                {item.content}
+              </Markdown>
+              <Text style={styles.assistantTime}>
+                {new Date(item.timestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
     );
   };
@@ -461,15 +478,20 @@ export default function ChatScreen() {
 
       {/* Streaming Indicator */}
       {streamingContent && (
-        <View style={[styles.messageContainer, styles.assistantMessage]}>
-          <View style={[styles.messageBubble, styles.assistantBubble]}>
+        <View style={styles.assistantMessageContainer}>
+          <View style={styles.assistantHeader}>
+            <View style={styles.assistantIcon}>
+              <MaterialCommunityIcons name="robot" size={16} color="#FFFFFF" />
+            </View>
+          </View>
+          <View style={styles.assistantContent}>
             <View style={styles.streamingHeader}>
               <ActivityIndicator size="small" color={COLORS.primary} />
               <Text style={styles.streamingLabel}>AI is typing...</Text>
             </View>
-            <Text style={[styles.messageText, styles.assistantText]}>
+            <Markdown style={markdownStyles} mergeStyle={true}>
               {streamingContent}
-            </Text>
+            </Markdown>
           </View>
         </View>
       )}
@@ -785,5 +807,179 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 12,
     fontWeight: "600",
+  },
+  // User Message Styles (Card-based)
+  userMessageContainer: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  // Assistant Message Styles (Free-flowing)
+  assistantMessageContainer: {
+    flexDirection: "row",
+    marginBottom: 24,
+    paddingRight: 40,
+  },
+  assistantHeader: {
+    marginRight: 12,
+    paddingTop: 4,
+  },
+  assistantIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#10B981",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  assistantContent: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  assistantForkIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.primary + "15",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 8,
+    gap: 4,
+    alignSelf: "flex-start",
+  },
+  assistantForkText: {
+    color: COLORS.primary,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+});
+
+// Markdown Styles
+const markdownStyles = StyleSheet.create({
+  body: {
+    color: COLORS.dark.text,
+    fontSize: 15,
+    lineHeight: 24,
+  },
+  heading1: {
+    color: COLORS.dark.text,
+    fontSize: 24,
+    fontWeight: "700",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  heading2: {
+    color: COLORS.dark.text,
+    fontSize: 20,
+    fontWeight: "700",
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  heading3: {
+    color: COLORS.dark.text,
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  paragraph: {
+    marginTop: 4,
+    marginBottom: 4,
+    color: COLORS.dark.text,
+  },
+  strong: {
+    fontWeight: "700",
+    color: COLORS.dark.text,
+  },
+  em: {
+    fontStyle: "italic",
+  },
+  code_inline: {
+    backgroundColor: COLORS.dark.surface,
+    color: COLORS.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 14,
+  },
+  code_block: {
+    backgroundColor: "#1E1E1E",
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 8,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 13,
+    color: "#D4D4D4",
+  },
+  fence: {
+    backgroundColor: "#1E1E1E",
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
+  },
+  bullet_list: {
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  ordered_list: {
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  list_item: {
+    marginTop: 2,
+    marginBottom: 2,
+    color: COLORS.dark.text,
+  },
+  bullet_list_icon: {
+    color: COLORS.primary,
+    marginRight: 8,
+  },
+  blockquote: {
+    backgroundColor: COLORS.dark.surface,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
+    paddingLeft: 12,
+    paddingVertical: 8,
+    marginVertical: 8,
+  },
+  table: {
+    borderWidth: 1,
+    borderColor: COLORS.dark.border,
+    borderRadius: 6,
+    marginVertical: 8,
+  },
+  thead: {
+    backgroundColor: COLORS.dark.surface,
+  },
+  tr: {
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.dark.border,
+  },
+  th: {
+    padding: 8,
+    fontWeight: "700",
+    color: COLORS.dark.text,
+  },
+  td: {
+    padding: 8,
+    color: COLORS.dark.text,
+  },
+  link: {
+    color: COLORS.primary,
+    textDecorationLine: "underline",
+  },
+  hr: {
+    backgroundColor: COLORS.dark.border,
+    height: 1,
+    marginVertical: 12,
   },
 });
