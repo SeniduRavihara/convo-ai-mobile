@@ -8,6 +8,7 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -333,39 +334,28 @@ export default function ChatScreen() {
         ) : (
           /* Assistant Message - Free Style with Markdown */
           <View style={styles.assistantMessageContainer}>
-            <View style={styles.assistantHeader}>
-              <View style={styles.assistantIcon}>
+            {isForkPoint && (
+              <View style={styles.assistantForkIndicator}>
                 <MaterialCommunityIcons
-                  name="robot"
-                  size={16}
-                  color="#FFFFFF"
+                  name="source-branch"
+                  size={14}
+                  color={COLORS.primary}
                 />
+                <Text style={styles.assistantForkText}>
+                  {childBranches.length} branch
+                  {childBranches.length > 1 ? "es" : ""}
+                </Text>
               </View>
-            </View>
-            <View style={styles.assistantContent}>
-              {isForkPoint && (
-                <View style={styles.assistantForkIndicator}>
-                  <MaterialCommunityIcons
-                    name="source-branch"
-                    size={14}
-                    color={COLORS.primary}
-                  />
-                  <Text style={styles.assistantForkText}>
-                    {childBranches.length} branch
-                    {childBranches.length > 1 ? "es" : ""}
-                  </Text>
-                </View>
-              )}
-              <Markdown style={markdownStyles} mergeStyle={true}>
-                {item.content}
-              </Markdown>
-              <Text style={styles.assistantTime}>
-                {new Date(item.timestamp).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </Text>
-            </View>
+            )}
+            <Markdown style={markdownStyles} rules={markdownRules} mergeStyle={true}>
+              {item.content}
+            </Markdown>
+            <Text style={styles.assistantTime}>
+              {new Date(item.timestamp).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
           </View>
         )}
       </View>
@@ -479,20 +469,13 @@ export default function ChatScreen() {
       {/* Streaming Indicator */}
       {streamingContent && (
         <View style={styles.assistantMessageContainer}>
-          <View style={styles.assistantHeader}>
-            <View style={styles.assistantIcon}>
-              <MaterialCommunityIcons name="robot" size={16} color="#FFFFFF" />
-            </View>
+          <View style={styles.streamingHeader}>
+            <ActivityIndicator size="small" color={COLORS.primary} />
+            <Text style={styles.streamingLabel}>AI is typing...</Text>
           </View>
-          <View style={styles.assistantContent}>
-            <View style={styles.streamingHeader}>
-              <ActivityIndicator size="small" color={COLORS.primary} />
-              <Text style={styles.streamingLabel}>AI is typing...</Text>
-            </View>
-            <Markdown style={markdownStyles} mergeStyle={true}>
-              {streamingContent}
-            </Markdown>
-          </View>
+          <Markdown style={markdownStyles} rules={markdownRules} mergeStyle={true}>
+            {streamingContent}
+          </Markdown>
         </View>
       )}
 
@@ -619,43 +602,8 @@ const styles = StyleSheet.create({
   messageContainer: {
     marginBottom: 16,
   },
-  userMessage: {
-    alignItems: "flex-end",
-  },
-  assistantMessage: {
-    alignItems: "flex-start",
-  },
-  messageBubble: {
-    maxWidth: "80%",
-    padding: 12,
-    borderRadius: 16,
-  },
-  userBubble: {
-    backgroundColor: COLORS.primary,
-    borderBottomRightRadius: 4,
-  },
-  assistantBubble: {
-    backgroundColor: COLORS.dark.surface,
-    borderBottomLeftRadius: 4,
-  },
-  messageText: {
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  userText: {
-    color: "#FFFFFF",
-  },
-  assistantText: {
-    color: COLORS.dark.text,
-  },
   messageTime: {
     fontSize: 12,
-  },
-  userTime: {
-    color: "rgba(255, 255, 255, 0.7)",
-  },
-  assistantTime: {
-    color: COLORS.dark.textSecondary,
   },
   emptyContainer: {
     flex: 1,
@@ -776,26 +724,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
-  // Fork Point Indicator Styles
-  forkPointBubble: {
-    borderColor: COLORS.primary,
-    borderWidth: 1.5,
-  },
-  forkPointIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.primary + "15",
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginBottom: 8,
-    gap: 4,
-  },
-  forkPointText: {
-    color: COLORS.primary,
-    fontSize: 11,
-    fontWeight: "600",
-  },
   // Streaming Indicator Styles
   streamingHeader: {
     flexDirection: "row",
@@ -815,32 +743,60 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 8,
   },
+  userBubble: {
+    backgroundColor: "#0084FF", // Softer, more friendly blue (like iMessage)
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    maxWidth: "75%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  userText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  userTime: {
+    color: "rgba(255, 255, 255, 0.7)",
+    fontSize: 11,
+    marginTop: 2,
+    alignSelf: "flex-end",
+  },
+  forkPointBubble: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+  },
+  forkPointIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 8,
+    gap: 4,
+    alignSelf: "flex-start",
+  },
+  forkPointText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "600",
+  },
   // Assistant Message Styles (Free-flowing)
   assistantMessageContainer: {
-    flexDirection: "row",
     marginBottom: 24,
-    paddingRight: 40,
+    paddingHorizontal: 16,
+    paddingRight: 16,
   },
-  assistantHeader: {
-    marginRight: 12,
-    paddingTop: 4,
-  },
-  assistantIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#10B981",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  assistantContent: {
-    flex: 1,
-    paddingRight: 8,
+  assistantTime: {
+    color: COLORS.dark.textSecondary,
+    fontSize: 11,
+    marginTop: 4,
   },
   assistantForkIndicator: {
     flexDirection: "row",
@@ -859,6 +815,32 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+
+// Custom Markdown Renderers for horizontal scrolling code blocks
+const markdownRules = {
+  fence: (node: any, children: any, parent: any, styles: any) => (
+    <ScrollView
+      key={node.key}
+      horizontal={true}
+      showsHorizontalScrollIndicator={true}
+      style={styles.fence}
+      persistentScrollbar={true}
+    >
+      <Text style={styles.fence}>{node.content}</Text>
+    </ScrollView>
+  ),
+  code_block: (node: any, children: any, parent: any, styles: any) => (
+    <ScrollView
+      key={node.key}
+      horizontal={true}
+      showsHorizontalScrollIndicator={true}
+      style={styles.code_block}
+      persistentScrollbar={true}
+    >
+      <Text style={styles.code_block}>{node.content}</Text>
+    </ScrollView>
+  ),
+};
 
 // Markdown Styles
 const markdownStyles = StyleSheet.create({
@@ -917,6 +899,7 @@ const markdownStyles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 13,
     color: "#D4D4D4",
+    overflow: "scroll", // Enable horizontal scrolling
   },
   fence: {
     backgroundColor: "#1E1E1E",
@@ -925,6 +908,17 @@ const markdownStyles = StyleSheet.create({
     marginVertical: 8,
     borderLeftWidth: 3,
     borderLeftColor: COLORS.primary,
+    overflow: "scroll", // Enable horizontal scrolling
+  },
+  // Styles for text inside code blocks - prevent wrapping
+  code_inline_text: {
+    flexWrap: "nowrap",
+  },
+  fence_text: {
+    flexWrap: "nowrap",
+  },
+  code_block_text: {
+    flexWrap: "nowrap",
   },
   bullet_list: {
     marginTop: 4,
