@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { COLORS } from "../constants";
 import { fetchCurrentUserData } from "../firebase/api";
-import { logout } from "../firebase/services/AuthService";
 import { createNewChat } from "../firebase/services/ChatService";
 import { useAuth, useData } from "../hooks/useAuth";
 import { MOCK_BRANCHES, MOCK_CHAT } from "../utils/mockData";
@@ -52,16 +51,6 @@ export default function HomeScreen() {
       router.replace("/login");
     }
   }, [currentUser, authLoading]);
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      router.replace("/login");
-    } catch (error) {
-      console.error("Logout error:", error);
-      Alert.alert("Error", "Failed to logout");
-    }
-  };
 
   const handleCreateChat = async () => {
     if (!currentUserData) return;
@@ -122,19 +111,41 @@ export default function HomeScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Conversations</Text>
-          <Text style={styles.headerSubtitle}>
-            Welcome, {currentUserData.userName}
-          </Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity style={styles.profileButton}>
+            <View style={styles.profileIcon}>
+              <Text style={styles.profileInitial}>
+                {currentUserData.userName?.charAt(0).toUpperCase() || "U"}
+              </Text>
+            </View>
+          </TouchableOpacity>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>Conversations</Text>
+            <Text style={styles.headerSubtitle}>
+              {currentUserData.userName || "User"}
+            </Text>
+          </View>
         </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Logout</Text>
+        <TouchableOpacity
+          onPress={() => router.push("/settings")}
+          style={styles.settingsButton}
+        >
+          <Ionicons
+            name="settings-outline"
+            size={24}
+            color={COLORS.dark.text}
+          />
         </TouchableOpacity>
       </View>
 
       {/* Search */}
       <View style={styles.searchContainer}>
+        <Ionicons
+          name="search"
+          size={20}
+          color={COLORS.dark.textSecondary}
+          style={styles.searchIcon}
+        />
         <TextInput
           style={styles.searchInput}
           placeholder="Search conversations..."
@@ -144,26 +155,55 @@ export default function HomeScreen() {
         />
       </View>
 
-      {/* New Chat Button */}
-      <TouchableOpacity style={styles.newChatButton} onPress={handleCreateChat}>
-        <Text style={styles.newChatButtonText}>+ New Conversation</Text>
-      </TouchableOpacity>
+      {/* Stats Section */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statItem}>
+          <Text style={styles.statNumber}>{displayChats.length}</Text>
+          <Text style={styles.statLabel}>Chats</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={styles.statNumber}>
+            {displayChats.filter((chat) => chat.updatedAt).length}
+          </Text>
+          <Text style={styles.statLabel}>Active</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={styles.statNumber}>{useMockData ? "1" : "0"}</Text>
+          <Text style={styles.statLabel}>Demo</Text>
+        </View>
+      </View>
 
-      {/* Mock Data Button */}
-      <TouchableOpacity
-        style={[styles.newChatButton, styles.mockButton]}
-        onPress={handleLoadMockData}
-      >
-        <MaterialCommunityIcons
-          name="sprout"
-          size={20}
-          color="#FFFFFF"
-          style={{ marginRight: 8 }}
-        />
-        <Text style={styles.newChatButtonText}>
-          Load Mock Data (Test Branches)
-        </Text>
-      </TouchableOpacity>
+      {/* Action Buttons */}
+      <View style={styles.actionsContainer}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={handleCreateChat}
+        >
+          <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.primaryButtonText}>New Chat</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={handleLoadMockData}
+        >
+          <MaterialCommunityIcons
+            name="sprout"
+            size={20}
+            color={COLORS.primary}
+          />
+          <Text style={styles.secondaryButtonText}>Mock Data</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Section Header */}
+      {!isChatsLoading && displayChats.length > 0 && (
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Conversations</Text>
+          <Text style={styles.sectionCount}>{displayChats.length}</Text>
+        </View>
+      )}
 
       {/* Chats List */}
       {isChatsLoading ? (
@@ -233,71 +273,194 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
+    paddingTop: 48,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.dark.border,
+    backgroundColor: COLORS.dark.surface,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  profileButton: {
+    marginRight: 12,
+  },
+  profileIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: COLORS.primary + "40",
+  },
+  profileInitial: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  headerText: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 20,
+    fontWeight: "700",
     color: COLORS.dark.text,
   },
   headerSubtitle: {
     fontSize: 14,
     color: COLORS.dark.textSecondary,
-    marginTop: 4,
+    marginTop: 2,
   },
-  logoutButton: {
+  settingsButton: {
     padding: 8,
-  },
-  logoutText: {
-    color: COLORS.danger,
-    fontSize: 14,
-    fontWeight: "600",
+    marginLeft: 8,
   },
   searchContainer: {
     padding: 16,
+    paddingBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  searchIcon: {
+    position: "absolute",
+    left: 28,
+    zIndex: 1,
   },
   searchInput: {
+    flex: 1,
     backgroundColor: COLORS.dark.surface,
     borderWidth: 1,
     borderColor: COLORS.dark.border,
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    paddingLeft: 40,
+    paddingRight: 16,
+    paddingVertical: 12,
     fontSize: 16,
     color: COLORS.dark.text,
   },
-  newChatButton: {
-    backgroundColor: COLORS.primary,
-    margin: 16,
-    marginTop: 0,
-    padding: 16,
-    borderRadius: 8,
-    alignItems: "center",
+  statsContainer: {
     flexDirection: "row",
+    backgroundColor: COLORS.dark.surface,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.dark.border,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: COLORS.primary,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: COLORS.dark.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: COLORS.dark.border,
+    marginHorizontal: 8,
+  },
+  actionsContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 12,
+  },
+  primaryButton: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "center",
+    gap: 8,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  mockButton: {
-    backgroundColor: COLORS.success,
-  },
-  newChatButtonText: {
+  primaryButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
   },
+  secondaryButton: {
+    flex: 1,
+    backgroundColor: COLORS.dark.surface,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  secondaryButtonText: {
+    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: COLORS.dark.background,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: COLORS.dark.text,
+  },
+  sectionCount: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.primary,
+    backgroundColor: COLORS.primary + "20",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
   chatItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.dark.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: COLORS.dark.surface,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.dark.border,
   },
   chatIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   chatIconText: {
     fontSize: 24,
