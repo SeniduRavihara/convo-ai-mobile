@@ -133,18 +133,18 @@ export default function BranchFlowView({
   activeBranchId,
   onBranchSelect,
 }: BranchFlowViewProps) {
-  // Build tree structure with proper layout
+  // Build tree structure with HORIZONTAL layout (left to right)
   const { nodes, edges, canvasSize } = useMemo(() => {
     const NODE_WIDTH = 200;
     const NODE_HEIGHT = 54;
-    const NODE_SPACING = 40;
-    const LEVEL_SPACING = 80;
+    const NODE_SPACING = 40; // Vertical spacing between siblings
+    const LEVEL_SPACING = 250; // Horizontal spacing between levels
 
     // Create layout nodes
     const layoutNodes: LayoutNode[] = branches.map((b) => ({
       id: b.id,
-      width: NODE_WIDTH,
-      height: NODE_HEIGHT,
+      width: NODE_HEIGHT, // Swap for horizontal layout
+      height: NODE_WIDTH, // Swap for horizontal layout
     }));
 
     // Create edges
@@ -155,7 +155,7 @@ export default function BranchFlowView({
         to: b.id,
       }));
 
-    // Calculate positions using tree layout
+    // Calculate positions using tree layout (this gives us vertical layout)
     const positions = layoutTree(
       layoutNodes,
       layoutEdges,
@@ -163,14 +163,14 @@ export default function BranchFlowView({
       LEVEL_SPACING
     );
 
-    // Create positioned nodes
+    // Create positioned nodes - SWAP X and Y for horizontal layout
     const positionedNodes: BranchNode[] = branches.map((branch) => {
       const pos = positions.get(branch.id) || { x: 0, y: 0 };
       return {
         branch,
-        x: pos.x,
-        y: pos.y,
-        level: 0, // Not needed with proper layout
+        x: pos.y + 50, // Swap: vertical position becomes horizontal
+        y: pos.x + 20, // Swap: horizontal position becomes vertical
+        level: 0,
       };
     });
 
@@ -192,7 +192,7 @@ export default function BranchFlowView({
     };
   }, [branches]);
 
-  // Draw SVG-like connections using positioned Views
+  // Draw SVG-like connections for HORIZONTAL layout
   const renderConnections = () => {
     const lines: React.ReactElement[] = [];
     const NODE_WIDTH = 200;
@@ -203,46 +203,28 @@ export default function BranchFlowView({
       const childNode = nodes.find((n) => n.branch.id === edge.to);
 
       if (parentNode && childNode) {
-        // Connection points (center bottom of parent to center top of child)
-        const x1 = parentNode.x + NODE_WIDTH / 2;
-        const y1 = parentNode.y + NODE_HEIGHT;
-        const x2 = childNode.x + NODE_WIDTH / 2;
-        const y2 = childNode.y;
+        // Connection points (right center of parent to left center of child)
+        const x1 = parentNode.x + NODE_WIDTH; // Right edge of parent
+        const y1 = parentNode.y + NODE_HEIGHT / 2; // Center vertically
+        const x2 = childNode.x; // Left edge of child
+        const y2 = childNode.y + NODE_HEIGHT / 2; // Center vertically
 
         const color = childNode.branch.color || "#6366f1";
 
-        // Draw path: straight down from parent, horizontal, then down to child
-        const midY = y1 + (y2 - y1) / 2;
+        // Draw path: straight right from parent, vertical, then right to child
+        const midX = x1 + (x2 - x1) / 2;
 
-        // Vertical line from parent
+        // Horizontal line from parent
         lines.push(
           <View
-            key={`v1-${edge.from}-${edge.to}`}
+            key={`h1-${edge.from}-${edge.to}`}
             style={[
               styles.connectionLine,
               {
                 position: "absolute",
-                left: x1 - 1,
-                top: y1,
-                width: 2,
-                height: midY - y1,
-                backgroundColor: color,
-              },
-            ]}
-          />
-        );
-
-        // Horizontal line
-        lines.push(
-          <View
-            key={`h-${edge.from}-${edge.to}`}
-            style={[
-              styles.connectionLine,
-              {
-                position: "absolute",
-                left: Math.min(x1, x2),
-                top: midY - 1,
-                width: Math.abs(x2 - x1),
+                left: x1,
+                top: y1 - 1,
+                width: midX - x1,
                 height: 2,
                 backgroundColor: color,
               },
@@ -250,25 +232,43 @@ export default function BranchFlowView({
           />
         );
 
-        // Vertical line to child
+        // Vertical line
         lines.push(
           <View
-            key={`v2-${edge.from}-${edge.to}`}
+            key={`v-${edge.from}-${edge.to}`}
             style={[
               styles.connectionLine,
               {
                 position: "absolute",
-                left: x2 - 1,
-                top: midY,
+                left: midX - 1,
+                top: Math.min(y1, y2),
                 width: 2,
-                height: y2 - midY,
+                height: Math.abs(y2 - y1),
                 backgroundColor: color,
               },
             ]}
           />
         );
 
-        // Arrow head at child
+        // Horizontal line to child
+        lines.push(
+          <View
+            key={`h2-${edge.from}-${edge.to}`}
+            style={[
+              styles.connectionLine,
+              {
+                position: "absolute",
+                left: midX,
+                top: y2 - 1,
+                width: x2 - midX,
+                height: 2,
+                backgroundColor: color,
+              },
+            ]}
+          />
+        );
+
+        // Arrow head at child (pointing right)
         lines.push(
           <View
             key={`arrow-${edge.from}-${edge.to}`}
@@ -276,14 +276,14 @@ export default function BranchFlowView({
               styles.arrowHead,
               {
                 position: "absolute",
-                left: x2 - 4,
-                top: y2 - 8,
-                borderLeftWidth: 4,
-                borderRightWidth: 4,
-                borderTopWidth: 8,
-                borderLeftColor: "transparent",
-                borderRightColor: "transparent",
-                borderTopColor: color,
+                left: x2 - 8,
+                top: y2 - 4,
+                borderTopWidth: 4,
+                borderBottomWidth: 4,
+                borderLeftWidth: 8,
+                borderTopColor: "transparent",
+                borderBottomColor: "transparent",
+                borderLeftColor: color,
               },
             ]}
           />
