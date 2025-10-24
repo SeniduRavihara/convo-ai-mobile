@@ -6,7 +6,6 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   StyleSheet,
   Text,
@@ -14,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import BranchPicker from "../components/BranchPicker";
+import BranchBottomSheet from "../components/BranchBottomSheet";
 import { COLORS } from "../constants";
 import { addMessageToBranch } from "../firebase/services/ChatService";
 import { useData } from "../hooks/useAuth";
@@ -215,29 +214,14 @@ export default function ChatScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Branch Picker Modal */}
-      <Modal
+      {/* Branch Bottom Sheet with Tabs */}
+      <BranchBottomSheet
         visible={showBranchPicker}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowBranchPicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Branch</Text>
-              <TouchableOpacity onPress={() => setShowBranchPicker(false)}>
-                <Text style={styles.modalClose}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            <BranchPicker
-              branches={allBranches}
-              activeBranchId={activeBranchId}
-              onBranchSelect={switchBranch}
-            />
-          </View>
-        </View>
-      </Modal>
+        branches={allBranches}
+        activeBranchId={activeBranchId}
+        onBranchSelect={switchBranch}
+        onClose={() => setShowBranchPicker(false)}
+      />
 
       {/* Messages */}
       <FlatList
@@ -353,35 +337,6 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 12,
     fontWeight: "600",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: COLORS.dark.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: "70%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.dark.border,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: COLORS.dark.text,
-  },
-  modalClose: {
-    fontSize: 24,
-    color: COLORS.dark.textSecondary,
-    fontWeight: "300",
   },
   messagesList: {
     padding: 16,
