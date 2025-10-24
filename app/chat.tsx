@@ -1,4 +1,5 @@
 // Chat Screen - Main conversation interface
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -187,8 +188,14 @@ export default function ChatScreen() {
       {/* Mock Data Banner */}
       {isMockChat && (
         <View style={styles.mockBanner}>
+          <MaterialCommunityIcons
+            name="sprout"
+            size={16}
+            color="#FFFFFF"
+            style={{ marginRight: 8 }}
+          />
           <Text style={styles.mockBannerText}>
-            🌿 DEMO MODE - Test Branch Switching
+            DEMO MODE - Test Branch Switching
           </Text>
         </View>
       )}
@@ -199,7 +206,7 @@ export default function ChatScreen() {
           onPress={() => router.back()}
           style={styles.backButton}
         >
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Ionicons name="arrow-back" size={24} color={COLORS.dark.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {currentChat?.name || "Chat"}
@@ -208,8 +215,14 @@ export default function ChatScreen() {
           style={styles.branchButton}
           onPress={() => setShowBranchPicker(true)}
         >
+          <MaterialCommunityIcons
+            name="source-branch"
+            size={18}
+            color={COLORS.primary}
+            style={{ marginRight: 6 }}
+          />
           <Text style={styles.branchButtonText}>
-            🌿 {hasBranches ? `${allBranches.length} Branches` : "Main"}
+            {hasBranches ? `${allBranches.length} Branches` : "Main"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -240,6 +253,23 @@ export default function ChatScreen() {
           </View>
         )}
       />
+
+      {/* Floating Action Button for Branches */}
+      {hasBranches && !showBranchPicker && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => setShowBranchPicker(true)}
+        >
+          <MaterialCommunityIcons
+            name="source-branch"
+            size={24}
+            color="#FFFFFF"
+          />
+          <View style={styles.fabBadge}>
+            <Text style={styles.fabBadgeText}>{allBranches.length}</Text>
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* Input */}
       <View style={styles.inputContainer}>
@@ -283,6 +313,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.success,
     padding: 12,
     alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
   },
   mockBannerText: {
     color: "#FFFFFF",
@@ -435,5 +467,41 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  fab: {
+    position: "absolute",
+    bottom: 90,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
+    zIndex: 1000,
+  },
+  fabBadge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: COLORS.danger,
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    borderWidth: 2,
+    borderColor: COLORS.dark.background,
+  },
+  fabBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
   },
 });

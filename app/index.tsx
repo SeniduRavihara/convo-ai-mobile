@@ -1,3 +1,4 @@
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -153,8 +154,14 @@ export default function HomeScreen() {
         style={[styles.newChatButton, styles.mockButton]}
         onPress={handleLoadMockData}
       >
+        <MaterialCommunityIcons
+          name="sprout"
+          size={20}
+          color="#FFFFFF"
+          style={{ marginRight: 8 }}
+        />
         <Text style={styles.newChatButtonText}>
-          🌿 Load Mock Data (Test Branches)
+          Load Mock Data (Test Branches)
         </Text>
       </TouchableOpacity>
 
@@ -181,9 +188,15 @@ export default function HomeScreen() {
               onPress={() => handleChatPress(item.id)}
             >
               <View style={[styles.chatIcon, { backgroundColor: item.color }]}>
-                <Text style={styles.chatIconText}>
-                  {item.id === "mock-chat-001" ? "🌿" : "💬"}
-                </Text>
+                {item.id === "mock-chat-001" ? (
+                  <MaterialCommunityIcons
+                    name="sprout"
+                    size={24}
+                    color="#FFFFFF"
+                  />
+                ) : (
+                  <Ionicons name="chatbubble" size={24} color="#FFFFFF" />
+                )}
               </View>
               <View style={styles.chatInfo}>
                 <Text style={styles.chatName}>{item.name}</Text>
@@ -260,6 +273,8 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
   },
   mockButton: {
     backgroundColor: COLORS.success,

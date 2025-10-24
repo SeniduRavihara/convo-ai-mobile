@@ -1,3 +1,4 @@
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { COLORS } from "../constants";
@@ -36,7 +37,7 @@ export default function BranchBottomSheet({
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Conversation Branches</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text style={styles.closeButtonText}>✕</Text>
+            <Ionicons name="close" size={24} color={COLORS.dark.text} />
           </TouchableOpacity>
         </View>
 
@@ -46,26 +47,42 @@ export default function BranchBottomSheet({
             style={[styles.tab, activeTab === "list" && styles.activeTab]}
             onPress={() => setActiveTab("list")}
           >
+            <Ionicons
+              name="list"
+              size={20}
+              color={
+                activeTab === "list" ? "#FFFFFF" : COLORS.dark.textSecondary
+              }
+              style={{ marginRight: 8 }}
+            />
             <Text
               style={[
                 styles.tabText,
                 activeTab === "list" && styles.activeTabText,
               ]}
             >
-              📋 List View
+              List View
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, activeTab === "flow" && styles.activeTab]}
             onPress={() => setActiveTab("flow")}
           >
+            <MaterialCommunityIcons
+              name="graph"
+              size={20}
+              color={
+                activeTab === "flow" ? "#FFFFFF" : COLORS.dark.textSecondary
+              }
+              style={{ marginRight: 8 }}
+            />
             <Text
               style={[
                 styles.tabText,
                 activeTab === "flow" && styles.activeTabText,
               ]}
             >
-              🌳 Flow View
+              Flow View
             </Text>
           </TouchableOpacity>
         </View>
@@ -153,6 +170,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: COLORS.dark.background,
     alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
   },
   activeTab: {
     backgroundColor: COLORS.primary,
