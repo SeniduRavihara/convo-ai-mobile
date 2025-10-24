@@ -1,11 +1,15 @@
 import React, { useMemo } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from "react-native-gesture-handler";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { COLORS } from "../constants";
 import { BranchWithMessages } from "../types";
 
@@ -133,6 +137,64 @@ export default function BranchFlowView({
   activeBranchId,
   onBranchSelect,
 }: BranchFlowViewProps) {
+  // Gesture state
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
+
+  // Pinch gesture for zoom
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((e) => {
+      scale.value = savedScale.value * e.scale;
+      // Clamp between 0.5x and 3x
+      scale.value = Math.min(Math.max(scale.value, 0.5), 3);
+    })
+    .onEnd(() => {
+      savedScale.value = scale.value;
+    });
+
+  // Pan gesture for moving around
+  const panGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      translateX.value = savedTranslateX.value + e.translationX;
+      translateY.value = savedTranslateY.value + e.translationY;
+    })
+    .onEnd(() => {
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+    });
+
+  // Double tap to reset
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      scale.value = withTiming(1);
+      savedScale.value = 1;
+      translateX.value = withTiming(0);
+      translateY.value = withTiming(0);
+      savedTranslateX.value = 0;
+      savedTranslateY.value = 0;
+    });
+
+  // Combine gestures
+  const composedGesture = Gesture.Simultaneous(
+    pinchGesture,
+    panGesture,
+    doubleTapGesture
+  );
+
+  // Animated style
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
   // Build tree structure with HORIZONTAL layout (left to right)
   const { nodes, edges, canvasSize } = useMemo(() => {
     const NODE_WIDTH = 200;
@@ -295,62 +357,60 @@ export default function BranchFlowView({
   };
 
   return (
-    <ScrollView
-      horizontal
-      style={styles.container}
-      contentContainerStyle={{
-        width: canvasSize.width,
-        height: canvasSize.height,
-      }}
-    >
-      <ScrollView style={styles.verticalScroll}>
-        <View
-          style={[
-            styles.canvas,
-            { width: canvasSize.width, height: canvasSize.height },
-          ]}
-        >
-          {/* Render connections first (background) */}
-          {renderConnections()}
+    <GestureHandlerRootView style={styles.container}>
+      <GestureDetector gesture={composedGesture}>
+        <Animated.View style={[styles.gestureContainer, animatedStyle]}>
+          <View
+            style={[
+              styles.canvas,
+              { width: canvasSize.width, height: canvasSize.height },
+            ]}
+          >
+            {/* Render connections first (background) */}
+            {renderConnections()}
 
-          {/* Render nodes */}
-          {nodes.map(({ branch, x, y }) => {
-            const isActive = branch.id === activeBranchId;
-            const messageCount = branch.messages?.length || 0;
+            {/* Render nodes */}
+            {nodes.map(({ branch, x, y }) => {
+              const isActive = branch.id === activeBranchId;
+              const messageCount = branch.messages?.length || 0;
 
-            return (
-              <TouchableOpacity
-                key={branch.id}
-                style={[
-                  styles.node,
-                  {
-                    left: x,
-                    top: y,
-                    borderColor: branch.color,
-                    borderWidth: isActive ? 3 : 2,
-                  },
-                  isActive && styles.activeNode,
-                ]}
-                onPress={() => onBranchSelect(branch.id)}
-              >
-                <View style={styles.nodeContent}>
-                  <Text
-                    style={[styles.nodeName, isActive && styles.activeNodeText]}
-                  >
-                    {branch.name}
-                  </Text>
-                  <View
-                    style={[styles.badge, { backgroundColor: branch.color }]}
-                  >
-                    <Text style={styles.badgeText}>{messageCount}</Text>
+              return (
+                <TouchableOpacity
+                  key={branch.id}
+                  style={[
+                    styles.node,
+                    {
+                      left: x,
+                      top: y,
+                      borderColor: branch.color,
+                      borderWidth: isActive ? 3 : 2,
+                    },
+                    isActive && styles.activeNode,
+                  ]}
+                  onPress={() => onBranchSelect(branch.id)}
+                >
+                  <View style={styles.nodeContent}>
+                    <Text
+                      style={[
+                        styles.nodeName,
+                        isActive && styles.activeNodeText,
+                      ]}
+                    >
+                      {branch.name}
+                    </Text>
+                    <View
+                      style={[styles.badge, { backgroundColor: branch.color }]}
+                    >
+                      <Text style={styles.badgeText}>{messageCount}</Text>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </ScrollView>
-    </ScrollView>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </Animated.View>
+      </GestureDetector>
+    </GestureHandlerRootView>
   );
 }
 
@@ -359,8 +419,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.dark.background,
   },
-  verticalScroll: {
+  gestureContainer: {
     flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   canvas: {
     position: "relative",
