@@ -65,7 +65,7 @@ export default function RootLayout() {
             value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
           >
             <RootLayoutNav />
-            <StatusBar style="auto" />
+            <StatusBar style="light" />
           </ThemeProvider>
         </DataContextProvider>
       </AuthContextProvider>

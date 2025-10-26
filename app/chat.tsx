@@ -16,6 +16,10 @@ import {
   View,
 } from "react-native";
 import Markdown from "react-native-markdown-display";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import BranchBottomSheet from "../components/BranchBottomSheet";
 import { COLORS } from "../constants";
 import {
@@ -49,6 +53,7 @@ const CHAT_API_ENDPOINT = `${API_BASE_URL}/api/chat`;
 
 export default function ChatScreen() {
   const { currentUserData, branchesData, activeChatId, allChats } = useData();
+  const insets = useSafeAreaInsets();
   const [message, setMessage] = useState("");
   const [activeBranchId, setActiveBranchId] = useState("main");
   const [isSending, setIsSending] = useState(false);
@@ -396,144 +401,146 @@ export default function ChatScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={100}
-    >
-      {/* Mock Data Banner */}
-      {isMockChat && (
-        <View style={styles.mockBanner}>
-          <MaterialCommunityIcons
-            name="sprout"
-            size={16}
-            color="#FFFFFF"
-            style={{ marginRight: 8 }}
-          />
-          <Text style={styles.mockBannerText}>
-            DEMO MODE - Test Branch Switching
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={100}
+        style={{ flex: 1 }}
+      >
+        {/* Mock Data Banner */}
+        {/* {isMockChat && (
+          <View style={styles.mockBanner}>
+            <MaterialCommunityIcons
+              name="sprout"
+              size={16}
+              color="#FFFFFF"
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.mockBannerText}>
+              DEMO MODE - Test Branch Switching
+            </Text>
+          </View>
+        )} */}
+
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={COLORS.dark.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {currentChat?.name || "Chat"}
           </Text>
+          {/* <TouchableOpacity
+            style={styles.branchButton}
+            onPress={() => setShowBranchPicker(true)}
+          >
+            <MaterialCommunityIcons
+              name="source-branch"
+              size={18}
+              color={COLORS.primary}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.branchButtonText}>
+              {hasBranches ? `${allBranches.length} Branches` : "Main"}
+            </Text>
+          </TouchableOpacity> */}
         </View>
-      )}
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={24} color={COLORS.dark.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {currentChat?.name || "Chat"}
-        </Text>
-        <TouchableOpacity
-          style={styles.branchButton}
-          onPress={() => setShowBranchPicker(true)}
-        >
-          <MaterialCommunityIcons
-            name="source-branch"
-            size={18}
-            color={COLORS.primary}
-            style={{ marginRight: 6 }}
-          />
-          <Text style={styles.branchButtonText}>
-            {hasBranches ? `${allBranches.length} Branches` : "Main"}
-          </Text>
-        </TouchableOpacity>
-      </View>
+        {/* Branch Bottom Sheet with Tabs */}
+        <BranchBottomSheet
+          visible={showBranchPicker}
+          branches={allBranches}
+          activeBranchId={activeBranchId}
+          onBranchSelect={switchBranch}
+          onClose={() => setShowBranchPicker(false)}
+        />
 
-      {/* Branch Bottom Sheet with Tabs */}
-      <BranchBottomSheet
-        visible={showBranchPicker}
-        branches={allBranches}
-        activeBranchId={activeBranchId}
-        onBranchSelect={switchBranch}
-        onClose={() => setShowBranchPicker(false)}
-      />
+        {/* Messages */}
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(item) => item.id}
+          renderItem={renderMessage}
+          contentContainerStyle={styles.messagesList}
+          onContentSizeChange={() =>
+            flatListRef.current?.scrollToEnd({ animated: false })
+          }
+          ListEmptyComponent={() => (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No messages yet</Text>
+              <Text style={styles.emptySubtext}>Start a conversation!</Text>
+            </View>
+          )}
+        />
 
-      {/* Messages */}
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={(item) => item.id}
-        renderItem={renderMessage}
-        contentContainerStyle={styles.messagesList}
-        onContentSizeChange={() =>
-          flatListRef.current?.scrollToEnd({ animated: false })
-        }
-        ListEmptyComponent={() => (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No messages yet</Text>
-            <Text style={styles.emptySubtext}>Start a conversation!</Text>
+        {/* Streaming Indicator */}
+        {streamingContent && (
+          <View style={styles.assistantMessageContainer}>
+            <View style={styles.streamingHeader}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.streamingLabel}>AI is typing...</Text>
+            </View>
+            <Markdown
+              style={markdownStyles}
+              rules={markdownRules}
+              mergeStyle={true}
+            >
+              {streamingContent}
+            </Markdown>
           </View>
         )}
-      />
 
-      {/* Streaming Indicator */}
-      {streamingContent && (
-        <View style={styles.assistantMessageContainer}>
-          <View style={styles.streamingHeader}>
-            <ActivityIndicator size="small" color={COLORS.primary} />
-            <Text style={styles.streamingLabel}>AI is typing...</Text>
-          </View>
-          <Markdown
-            style={markdownStyles}
-            rules={markdownRules}
-            mergeStyle={true}
+        {/* Floating Action Button for Branches */}
+        {hasBranches && !showBranchPicker && (
+          <TouchableOpacity
+            style={[styles.fab, { bottom: 90 + insets.bottom }]}
+            onPress={() => setShowBranchPicker(true)}
           >
-            {streamingContent}
-          </Markdown>
-        </View>
-      )}
+            <MaterialCommunityIcons
+              name="source-branch"
+              size={24}
+              color="#FFFFFF"
+            />
+            <View style={styles.fabBadge}>
+              <Text style={styles.fabBadgeText}>{allBranches.length}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
-      {/* Floating Action Button for Branches */}
-      {hasBranches && !showBranchPicker && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => setShowBranchPicker(true)}
-        >
-          <MaterialCommunityIcons
-            name="source-branch"
-            size={24}
-            color="#FFFFFF"
+        {/* Input */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder={
+              isMockChat ? "Demo mode - read only" : "Type a message..."
+            }
+            placeholderTextColor={COLORS.dark.textSecondary}
+            value={message}
+            onChangeText={setMessage}
+            multiline
+            maxLength={2000}
+            editable={!isSending && !isMockChat}
           />
-          <View style={styles.fabBadge}>
-            <Text style={styles.fabBadgeText}>{allBranches.length}</Text>
-          </View>
-        </TouchableOpacity>
-      )}
-
-      {/* Input */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder={
-            isMockChat ? "Demo mode - read only" : "Type a message..."
-          }
-          placeholderTextColor={COLORS.dark.textSecondary}
-          value={message}
-          onChangeText={setMessage}
-          multiline
-          maxLength={2000}
-          editable={!isSending && !isMockChat}
-        />
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            (!message.trim() || isSending) && styles.sendButtonDisabled,
-          ]}
-          onPress={handleSendMessage}
-          disabled={!message.trim() || isSending}
-        >
-          {isSending ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={styles.sendButtonText}>Send</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              (!message.trim() || isSending) && styles.sendButtonDisabled,
+            ]}
+            onPress={handleSendMessage}
+            disabled={!message.trim() || isSending}
+          >
+            {isSending ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.sendButtonText}>Send</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

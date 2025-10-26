@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS } from "../constants";
 import { fetchCurrentUserData } from "../firebase/api";
 import { createNewChat } from "../firebase/services/ChatService";
@@ -108,7 +109,7 @@ export default function HomeScreen() {
     : filteredChats;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -248,7 +249,7 @@ export default function HomeScreen() {
           )}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
